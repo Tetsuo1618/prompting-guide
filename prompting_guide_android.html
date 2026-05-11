@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- Android viewport: prevent zoom on tap, full-width rendering -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0f">
+<!-- Android PWA hints -->
+<meta name="mobile-web-app-capable" content="yes">
+<title>Prompting Guide</title>
+<style>
+  /* ── DESIGN TOKENS ───────────────────────────── */
+  :root {
+    --bg:      #0a0a0f;
+    --surface: #12121a;
+    --border:  #1e293b;
+    --accent:  #00d4aa;
+    --accent2: #0ea5e9;
+    --text:    #e2e8f0;
+    --muted:   #94a3b8;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger:  #ef4444;
+
+    /* Android touch target minimum = 48px */
+    --tap-min: 48px;
+
+    /* Type scale — slightly larger for phone readability */
+    --fs-xs:   0.78rem;
+    --fs-sm:   0.88rem;
+    --fs-base: 1rem;
+    --fs-lg:   1.15rem;
+    --fs-xl:   1.35rem;
+    --fs-2xl:  1.65rem;
+  }
+
+  /* ── RESET ───────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── BASE ────────────────────────────────────── */
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    min-height: 100vh;
+    /* Prevent iOS bounce on Android WebView */
+    overscroll-behavior: none;
+  }
+
+  /* ── LAYOUT ──────────────────────────────────── */
+  .shell {
+    max-width: 480px;      /* natural phone width */
+    margin: 0 auto;
+    padding: 0 0 6rem;     /* bottom padding for fixed nav */
+  }
+
+  /* ── HEADER ──────────────────────────────────── */
+  .app-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 1.2rem 0.8rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .app-header h1 {
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2;
+  }
+  .app-header .subtitle {
+    font-size: var(--fs-xs);
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* ── PROGRESS STEPPER ────────────────────────── */
+  .stepper {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    background: var(--surface);
+  }
+  .stepper::-webkit-scrollbar { display: none; }
+
+  .step-dot {
+    /* Min 44px touch target */
+    min-width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    /* Touch feedback */
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.2s, background 0.2s, color 0.2s;
+  }
+  .step-dot.active  { border-color: var(--accent);  background: var(--accent);  color: #000; }
+  .step-dot.done    { border-color: var(--success); background: var(--success); color: #000; }
+
+  .step-line {
+    flex: 1;
+    height: 2px;
+    background: var(--border);
+    min-width: 8px;
+    max-width: 24px;
+  }
+
+  /* ── CARDS / STEPS ───────────────────────────── */
+  .step-card {
+    display: none;
+    padding: 1.2rem;
+    animation: fadeIn 0.25s ease;
+  }
+  .step-card.visible { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .step-card h2 {
+    font-size: var(--fs-xl);
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.75rem;
+    line-height: 1.25;
+  }
+  .step-card h3 {
+    font-size: var(--fs-base);
+    color: var(--accent2);
+    margin: 1.25rem 0 0.4rem;
+  }
+  .step-card p { font-size: var(--fs-sm); color: var(--text); margin-bottom: 0.75rem; }
+  .step-card ul { margin-left: 1.2rem; font-size: var(--fs-sm); }
+  .step-card li { margin-bottom: 0.4rem; }
+
+  /* ── CALLOUT BOXES ───────────────────────────── */
+  .box {
+    border-radius: 0 10px 10px 0;
+    padding: 0.85rem 1rem;
+    margin: 0.85rem 0;
+    font-size: var(--fs-sm);
+    border-left: 3px solid;
+  }
+  .box.info    { background: rgba(0,212,170,.08);  border-color: var(--accent); }
+  .box.tip     { background: rgba(34,197,94,.08);  border-color: var(--success); }
+  .box.warning { background: rgba(245,158,11,.08); border-color: var(--warning); }
+  .box.danger  { background: rgba(239,68,68,.08);  border-color: var(--danger); }
+  .box strong  { display: block; margin-bottom: 3px; }
+
+  /* ── CODE BLOCKS ─────────────────────────────── */
+  .code-block {
+    background: #07070d;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    margin: 0.75rem 0;
+    font-family: 'Courier New', 'Roboto Mono', monospace;
+    font-size: var(--fs-xs);
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    position: relative;
+    color: #c9d1d9;
+  }
+  .code-block.good   { border-color: var(--success); }
+  .code-block.system { border-color: var(--accent2); }
+  .code-block .badge {
+    display: inline-block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: sans-serif;
+    font-size: 0.68rem;
+    color: var(--muted);
+    padding: 1px 6px;
+    margin-bottom: 8px;
+  }
+  /* Copy button */
+  .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .copy-btn.copied { color: var(--success); border-color: var(--success); }
+
+  /* ── GRID FRAMEWORKS ─────────────────────────── */
+  .fw-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+    margin: 1rem 0;
+  }
+  .fw-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.8rem;
+    text-align: center;
+  }
+  .fw-card .num { font-size: 1.4rem; margin-bottom: 4px; }
+  .fw-card h4   { font-size: var(--fs-xs); color: var(--accent); margin-bottom: 3px; font-weight: 700; }
+  .fw-card p    { font-size: 0.72rem; color: var(--muted); margin: 0; }
+
+  /* ── TABLE ───────────────────────────────────── */
+  .cmp-table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: var(--fs-xs); }
+  .cmp-table th {
+    background: var(--surface);
+    color: var(--accent);
+    padding: 0.65rem 0.8rem;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+  }
+  .cmp-table td {
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .cmp-table tr:last-child td { border-bottom: none; }
+
+  /* ── TABS ────────────────────────────────────── */
+  .tabs { margin: 0.75rem 0; }
+  .tab-strip {
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .tab-strip::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 0.5rem 0.85rem;
+    border-radius: 6px;
+    font-size: var(--fs-xs);
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: var(--tap-min);
+    display: flex;
+    align-items: center;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .tab-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+  .tab-panel { display: none; padding-top: 0.75rem; }
+  .tab-panel.active { display: block; animation: fadeIn 0.2s ease; }
+
+  /* ── SPECIALTY CARDS ─────────────────────────── */
+  .spec-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+    margin: 0.85rem 0;
+  }
+  .spec-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 0.85rem 0.75rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.15s, background 0.15s;
+    min-height: var(--tap-min);
+  }
+  .spec-card.sel  { border-color: var(--accent); background: rgba(0,212,170,.07); }
+  .spec-card h4   { font-size: var(--fs-xs); color: var(--accent2); margin-bottom: 3px; font-weight: 700; }
+  .spec-card p    { font-size: 0.7rem; color: var(--muted); margin: 0; }
+
+  /* ── CHECKLIST ───────────────────────────────── */
+  .checklist {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    margin: 0.85rem 0;
+  }
+  .check-item {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 0.7rem;
+    font-size: var(--fs-xs);
+    cursor: pointer;
+    min-height: var(--tap-min);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .check-item.ticked { border-color: var(--success); background: rgba(34,197,94,.08); }
+  .check-item .tick { font-size: 0.9rem; opacity: 0; transition: opacity 0.15s; }
+  .check-item.ticked .tick { opacity: 1; }
+
+  /* ── BOTTOM NAV ──────────────────────────────── */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.2rem;
+    /* Safe area for Android nav bar */
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    z-index: 100;
+    gap: 0.75rem;
+  }
+  .nav-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #000;
+    border: none;
+    padding: 0.7rem 1.4rem;
+    border-radius: 10px;
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    cursor: pointer;
+    min-height: var(--tap-min);
+    -webkit-tap-highlight-color: transparent;
+    transition: filter 0.15s;
+    white-space: nowrap;
+  }
+  .nav-btn:active { filter: brightness(0.88); }
+  .nav-btn.ghost {
+    background: transparent;
+    border: 2px solid var(--border);
+    color: var(--text);
+    font-weight: 600;
+  }
+  .nav-btn.ghost:active { border-color: var(--accent); }
+  .nav-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+  .step-counter {
+    font-size: var(--fs-xs);
+    color: var(--muted);
+    text-align: center;
+    flex: 1;
+  }
+  .step-counter strong { color: var(--accent); }
+
+  /* ── SANDBOX ─────────────────────────────────── */
+  .sandbox textarea {
+    width: 100%;
+    min-height: 110px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.85rem;
+    color: var(--text);
+    font-family: inherit;
+    font-size: var(--fs-sm);
+    resize: vertical;
+    margin-bottom: 0.75rem;
+    /* Prevent iOS zoom on focus (font-size >= 16px) */
+    font-size: 16px;
+  }
+  .sandbox textarea:focus { outline: none; border-color: var(--accent); }
+
+  .analysis-output {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.85rem;
+    font-size: var(--fs-sm);
+    min-height: 60px;
+  }
+  .analysis-output .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    margin: 2px 3px 2px 0;
+  }
+  .tag.good    { background: rgba(34,197,94,.15);  color: var(--success); }
+  .tag.warn    { background: rgba(245,158,11,.15); color: var(--warning); }
+  .tag.missing { background: rgba(239,68,68,.15);  color: var(--danger); }
+
+  /* ── RESPONSIVE: wider screens ───────────────── */
+  @media (min-width: 600px) {
+    .shell { padding-bottom: 7rem; }
+    .step-card { padding: 1.5rem; }
+    .app-header h1 { font-size: var(--fs-xl); }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>System &amp; Specialized Prompting</h1>
+  <p class="subtitle">Master system instructions &amp; domain techniques</p>
+</div>
+
+<!-- Progress stepper dots -->
+<div class="stepper" id="stepper">
+  <!-- Dots + lines injected by JS -->
+</div>
+
+<!-- ══════════════ STEP CARDS ══════════════ -->
+<div class="shell" id="shell">
+
+<!-- ── STEP 1 ── System vs User Prompts -->
+<div class="step-card visible" data-step="0">
+  <h2>Step 1: System vs User Prompts</h2>
+  <p>Every AI conversation has <strong>two layers</strong>. Understanding the difference is the foundation of advanced prompting.</p>
+
+  <table class="cmp-table">
+    <tr>
+      <th>System Prompt</th>
+      <th>User Prompt</th>
+    </tr>
+    <tr>
+      <td>Sets the AI's <strong>personality, role &amp; rules</strong> for the whole conversation</td>
+      <td>The <strong>specific request</strong> you make right now</td>
+    </tr>
+    <tr>
+      <td>Applied <strong>once</strong> at the start and persists</td>
+      <td>Sent <strong>every time</strong> you type a message</td>
+    </tr>
+    <tr>
+      <td>Defines <strong>boundaries</strong> — what the AI should/shouldn't do</td>
+      <td>Defines <strong>actions</strong> — what you want done today</td>
+    </tr>
+    <tr>
+      <td><em>"You are a sarcastic pirate who speaks in riddles"</em></td>
+      <td><em>"Explain quantum physics"</em></td>
+    </tr>
+  </table>
+
+  <div class="box info">
+    <strong>💡 The Power</strong>
+    A great system prompt makes every user prompt better automatically. Set the rules once, then ask questions naturally.
+  </div>
+
+  <div class="box warning">
+    <strong>⚠️ Beginner Mistake</strong>
+    Putting everything in the user prompt. <em>"Act as a doctor and tell me about headaches and be detailed and use simple words and…"</em> — this wastes tokens and gets forgotten. Put the "act as" part in system instructions instead.
+  </div>
+</div>
+
+<!-- ── STEP 2 ── Anatomy -->
+<div class="step-card" data-step="1">
+  <h2>Step 2: Anatomy of a System Prompt</h2>
+  <p>A complete system prompt has <strong>6 building blocks</strong>. Not every conversation needs all 6, but knowing them gives you full control.</p>
+
+  <div class="fw-grid">
+    <div class="fw-card"><div class="num">1</div><h4>IDENTITY</h4><p>Who are you? (role, expertise, persona)</p></div>
+    <div class="fw-card"><div class="num">2</div><h4>TONE</h4><p>How do you speak? (formal, casual, technical)</p></div>
+    <div class="fw-card"><div class="num">3</div><h4>KNOWLEDGE</h4><p>What do you know? (scope, expertise level)</p></div>
+    <div class="fw-card"><div class="num">4</div><h4>BOUNDARIES</h4><p>What won't you do? (refusals, limits)</p></div>
+    <div class="fw-card"><div class="num">5</div><h4>FORMAT</h4><p>How do you structure answers? (bullets, sections)</p></div>
+    <div class="fw-card"><div class="num">6</div><h4>PROCESS</h4><p>How do you think? (step-by-step, debate both sides)</p></div>
+  </div>
+
+  <div class="code-block system">
+    <span class="badge">COMPLETE SYSTEM PROMPT EXAMPLE</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+IDENTITY: You are a senior software architect with 15 years of experience in distributed systems.
+
+TONE: Professional but approachable. Use analogies for complex concepts. Never be condescending.
+
+KNOWLEDGE: Deep expertise in microservices, event-driven architecture, and database optimization.
+
+BOUNDARIES: Do not write production code without security considerations. Flag potential risks.
+
+FORMAT: Use headers for sections. Include code examples in fenced blocks. Summarize with "Key Points."
+
+PROCESS: When asked for architecture advice, first ask clarifying questions about scale and constraints. Then present 2-3 options with tradeoffs. Never present only one solution.
+  </div>
+
+  <div class="box tip">
+    <strong>✅ Pro Tip</strong>
+    Save your best system prompts as templates. Reuse them across conversations. Most pros have 5–10 "personas" they switch between.
+  </div>
+</div>
+
+<!-- ── STEP 3 ── Where to put prompts -->
+<div class="step-card" data-step="2">
+  <h2>Step 3: Where to Put System Prompts</h2>
+  <p>Different platforms handle system prompts differently. Here's how to use them wherever you work.</p>
+
+  <div class="tabs">
+    <div class="tab-strip">
+      <button class="tab-btn active" data-tab="t-chat">Claude / ChatGPT</button>
+      <button class="tab-btn" data-tab="t-api">API</button>
+      <button class="tab-btn" data-tab="t-custom">Custom GPTs</button>
+      <button class="tab-btn" data-tab="t-local">Local Models</button>
+    </div>
+
+    <div class="tab-panel active" id="t-chat">
+      <h3>Web Interfaces (Claude, ChatGPT, Gemini)</h3>
+      <p>No separate "system" box. Put your system instructions in the <strong>first message</strong> of the conversation.</p>
+      <div class="code-block">
+        <span class="badge">FIRST MESSAGE TECHNIQUE</span>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+Message 1:
+"For this conversation, act as a marketing strategist who specialises in TikTok growth for small businesses. Always suggest 3 options. Use bullet points. Keep responses under 200 words."
+
+Message 2+:
+"How do I get my first 1000 followers?"
+      </div>
+      <div class="box warning">
+        <strong>⚠️ Drift Warning</strong>
+        In web interfaces the AI may "drift" over long conversations. Re-paste key rules every 10–15 messages if needed.
+      </div>
+    </div>
+
+    <div class="tab-panel" id="t-api">
+      <h3>OpenAI / Anthropic API</h3>
+      <p>APIs have a dedicated <code>system</code> parameter — the cleanest way to use system prompts.</p>
+      <div class="code-block system">
+        <span class="badge">API STRUCTURE</span>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+{
+  "model": "claude-sonnet-4-20250514",
+  "system": "You are a concise technical writer. Never exceed 3 sentences per answer.",
+  "messages": [
+    { "role": "user", "content": "What is an API?" }
+  ]
+}
+      </div>
+      <div class="box tip">
+        <strong>✅ Note</strong>
+        The system message is invisible to end users but shapes every response. This is how apps like Jasper and coding assistants work behind the scenes.
+      </div>
+    </div>
+
+    <div class="tab-panel" id="t-custom">
+      <h3>Custom GPTs &amp; Claude Projects</h3>
+      <p>These platforms have a dedicated <strong>Instructions / System Prompt field</strong> in the configuration panel. This is the most powerful option — it's baked in permanently.</p>
+      <div class="box info">
+        <strong>💡 Best Practice</strong>
+        In Claude Projects, put your system prompt in "Project Instructions." Every new conversation automatically inherits it. Perfect for ongoing workflows.
+      </div>
+    </div>
+
+    <div class="tab-panel" id="t-local">
+      <h3>Local Models (Ollama, LM Studio)</h3>
+      <div class="code-block">
+        <span class="badge">OLLAMA EXAMPLE</span>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+ollama run llama3 --system "You are a concise Python tutor. Use bullet points. Keep examples under 10 lines."
+      </div>
+      <div class="box tip">
+        <strong>✅ Tip</strong>
+        Create a custom Modelfile to bake a system prompt permanently into a local model so you never have to re-type it.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STEP 4 ── Good vs Bad -->
+<div class="step-card" data-step="3">
+  <h2>Step 4: Good vs Bad Prompts</h2>
+  <p>The same question, asked two different ways, can produce dramatically different results.</p>
+
+  <h3>❌ Bad Prompt Patterns</h3>
+  <div class="code-block">
+    <span class="badge">VAGUE</span>
+Tell me about Python.
+  </div>
+  <div class="code-block">
+    <span class="badge">OVERCROWDED USER PROMPT</span>
+Act as a doctor and explain headaches and be detailed and simple and include causes and treatments and don't use jargon.
+  </div>
+
+  <h3>✅ Good Prompt Patterns</h3>
+  <div class="code-block good">
+    <span class="badge">SPECIFIC + STRUCTURED</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+SYSTEM: You are a Python tutor for complete beginners. Use analogies. Max 5 sentences per concept. Always include one code example.
+
+USER: Explain what a dictionary is and when I should use it instead of a list.
+  </div>
+
+  <div class="code-block good">
+    <span class="badge">ROLE + FORMAT + CONSTRAINT</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+SYSTEM: You are a senior UX designer. Always provide 3 solutions per problem. Rate each solution: Effort (Low/Med/High), Impact (Low/Med/High). Format as a comparison table.
+
+USER: How should I redesign my app's onboarding flow to reduce drop-off?
+  </div>
+
+  <div class="box info">
+    <strong>💡 The Upgrade Formula</strong>
+    Vague → Specific role + clear output format + explicit constraints = dramatically better results.
+  </div>
+
+  <h3>Prompt Upgrade Checklist</h3>
+  <div class="checklist" id="checklist-4">
+    <div class="check-item"><span class="tick">✓</span> Role defined</div>
+    <div class="check-item"><span class="tick">✓</span> Output format stated</div>
+    <div class="check-item"><span class="tick">✓</span> Constraints clear</div>
+    <div class="check-item"><span class="tick">✓</span> Audience specified</div>
+    <div class="check-item"><span class="tick">✓</span> Tone set</div>
+    <div class="check-item"><span class="tick">✓</span> Length limited</div>
+  </div>
+  <p style="font-size:var(--fs-xs);color:var(--muted);">Tap each item to check it off.</p>
+</div>
+
+<!-- ── STEP 5 ── Specializations Overview -->
+<div class="step-card" data-step="4">
+  <h2>Step 5: Choosing Your Specialization</h2>
+  <p>Different domains need different prompting patterns. Choose yours — the techniques transfer between fields.</p>
+
+  <div class="spec-grid" id="spec-grid">
+    <div class="spec-card" data-spec="coding"><h4>💻 Coding</h4><p>Code review, debugging, architecture</p></div>
+    <div class="spec-card" data-spec="creative"><h4>✍️ Creative</h4><p>Storytelling, characters, editing</p></div>
+    <div class="spec-card" data-spec="data"><h4>📊 Data</h4><p>SQL, visualisation, stats</p></div>
+    <div class="spec-card" data-spec="business"><h4>💼 Business</h4><p>Marketing, finance, strategy</p></div>
+    <div class="spec-card" data-spec="learning"><h4>🎓 Teaching</h4><p>Lesson plans, explanations</p></div>
+    <div class="spec-card" data-spec="legal"><h4>⚖️ Legal</h4><p>Contract review, risk analysis</p></div>
+  </div>
+
+  <div class="box tip">
+    <strong>✅ How to Use This Section</strong>
+    Read through all specialties to understand the patterns. Then deep-dive into your main field. The techniques transfer between domains.
+  </div>
+</div>
+
+<!-- ── STEP 6 ── Coding -->
+<div class="step-card" data-step="5">
+  <h2>Step 6: Coding &amp; Development</h2>
+
+  <h3>Technique 1 — Code Review Prompt</h3>
+  <div class="code-block good">
+    <span class="badge">CODE REVIEW</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+ROLE: Senior code reviewer. Focus on security, performance, maintainability.
+
+TASK: Review this [LANGUAGE] code for:
+1. Security vulnerabilities (SQL injection, XSS, buffer overflow)
+2. Performance bottlenecks (unnecessary loops, inefficient structures)
+3. Code smells (magic numbers, deep nesting, duplicated logic)
+4. Test coverage gaps
+
+FORMAT: For each issue:
+- Line number(s)
+- Severity: Critical / Warning / Suggestion
+- Explanation of the risk
+- Refactored code example
+- Why the fix is better
+
+CONSTRAINTS: Don't suggest libraries I haven't imported.
+  </div>
+
+  <h3>Technique 2 — Debugging Prompt</h3>
+  <div class="code-block good">
+    <span class="badge">DEBUGGING</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+You are a debugging specialist. I will describe a bug. Your process:
+
+1. HYPOTHESIS: 3 most likely causes ranked by probability
+2. ISOLATION: Smallest code change to test each hypothesis
+3. ROOT CAUSE: Once I tell you which test failed, identify the exact cause
+4. FIX: The minimal code fix
+5. PREVENTION: A test or linter rule to catch this in future
+
+Bug: [describe error, expected vs actual, relevant code]
+  </div>
+
+  <h3>Technique 3 — Architecture Decision</h3>
+  <div class="code-block good">
+    <span class="badge">ARCHITECTURE</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+You are a system architect. I need to choose a tech stack for [PROJECT].
+
+Constraints: [budget, team size, scale, timeline]
+
+Provide 3 architecture options:
+- Option A: Conservative (proven, low risk)
+- Option B: Balanced (modern but stable)
+- Option C: Aggressive (cutting edge, higher risk)
+
+For each include: stack, pros/cons, when it's right, hidden costs, migration path.
+  </div>
+</div>
+
+<!-- ── STEP 7 ── Creative & Data -->
+<div class="step-card" data-step="6">
+  <h2>Step 7: Creative Writing &amp; Data</h2>
+
+  <h3>Creative Writing — Story Engine</h3>
+  <div class="code-block good">
+    <span class="badge">STORY ENGINE</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+You are a fiction writing coach. For each concept I give you:
+
+1. HOOK: Strongest opening sentence/paragraph
+2. CONFLICT: Internal and external conflicts
+3. CHARACTER ARC: Protagonist's transformation
+4. PACING: Where the story might drag or rush
+5. DIALOGUE: 2 lines that reveal character
+6. TWIST: An unexpected but fair plot turn
+
+TONE: Encouraging but honest. Use examples from published works. Never rewrite my story — only guide me.
+  </div>
+
+  <h3>Data Analysis — Insight Extractor</h3>
+  <div class="code-block good">
+    <span class="badge">INSIGHT EXTRACTOR</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+You are a data analyst who turns numbers into business stories. When I share data:
+
+1. PATTERN: What trend do you see? (Confidence: High/Med/Low)
+2. SO WHAT: Why does this matter to the business?
+3. COMPARISON: Industry benchmarks or historical data?
+4. CAUSE: 2 most likely drivers
+5. ACTION: One quick win + one strategic play
+6. RISK: What could make this insight wrong?
+
+RULES: Never say "the data shows" without saying what it shows. Always quantify.
+  </div>
+
+  <h3>Business — Strategy Synthesizer</h3>
+  <div class="code-block good">
+    <span class="badge">STRATEGY</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+You are a business strategist. For each challenge:
+
+1. SITUATION: Core problem in one sentence
+2. OPTIONS: 4 strategies (2 obvious, 2 unconventional)
+3. CRITERIA: Score each on Cost, Speed, Risk, Impact (1–5)
+4. RECOMMENDATION: Best option + why
+5. EXECUTION: 3 phases with milestones
+6. METRICS: KPIs to confirm it's working
+
+CONSTRAINT: Assume limited budget unless told otherwise.
+  </div>
+</div>
+
+<!-- ── STEP 8 ── Advanced Techniques -->
+<div class="step-card" data-step="7">
+  <h2>Step 8: Advanced Cross-Domain Techniques</h2>
+  <p>These techniques work across <strong>all</strong> specialisations. Master these and your prompts become significantly more powerful.</p>
+
+  <h3>1 — Few-Shot Prompting</h3>
+  <p>Show the AI 2–3 examples of exactly what you want, then ask for more.</p>
+  <div class="code-block">
+    <span class="badge">FEW-SHOT</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+Rewrite these product descriptions to be punchier and more emotional.
+
+Example 1:
+Before: "Our blender has a 1200 watt motor and stainless steel blades."
+After: "Crush ice in 8 seconds flat. This 1200-watt beast turns frozen fruit into silk."
+
+Example 2:
+Before: "The jacket is waterproof and has 4 pockets."
+After: "Stay dry in a downpour. Four pockets: phone, keys, wallet, snacks — all sorted."
+
+Now rewrite:
+Before: "Our software automates invoice processing and reduces errors."
+After:
+  </div>
+
+  <h3>2 — Chain-of-Thought</h3>
+  <p>Force the AI to show its reasoning before giving the final answer.</p>
+  <div class="code-block">
+    <span class="badge">CHAIN-OF-THOUGHT</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+Solve this step by step:
+1. Identify what type of problem this is
+2. List the relevant formulas or principles
+3. Apply them one at a time
+4. Check your work
+5. Present the final answer
+
+Problem: [your problem here]
+  </div>
+
+  <h3>3 — Persona Layering</h3>
+  <p>Stack multiple expert personas for complex tasks.</p>
+  <div class="code-block">
+    <span class="badge">PERSONA LAYERING</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+You are a team of 3 experts collaborating:
+
+- Alex (Data Scientist): Statistical validity, data quality, methodology
+- Blake (Product Manager): User impact, feasibility, business value
+- Casey (Designer): UX, clarity, visual presentation
+
+Each expert contributes their perspective. Then synthesise into one recommendation that balances all three. Flag any conflicts.
+  </div>
+
+  <h3>4 — Constraint Stacking</h3>
+  <p>Add multiple, sometimes contradictory constraints to force creative solutions.</p>
+  <div class="code-block">
+    <span class="badge">CONSTRAINT STACKING</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+Design a marketing campaign with these constraints:
+- Budget: $0 (organic/viral only)
+- Time: Launch in 48 hours
+- Audience: People who hate ads
+- Format: Shareable without explanation
+- Risk: No trending hashtags or memes
+
+The constraints seem impossible. That's the point. Find the loophole.
+  </div>
+
+  <h3>5 — Meta-Prompting</h3>
+  <p>Ask the AI to improve your prompt before answering.</p>
+  <div class="code-block">
+    <span class="badge">META-PROMPTING</span>
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+I want to ask you to [brief description of task].
+
+Before you answer:
+1. Identify what's ambiguous or missing in my request
+2. Suggest 2-3 ways to make my prompt more specific
+3. Ask me which approach I prefer
+4. Only then, answer using the refined prompt
+  </div>
+
+  <div class="box info">
+    <strong>💡 Final Advice</strong>
+    The best prompt engineers aren't those who memorise techniques — they're those who know which technique to apply to which problem. Practice switching between them.
+  </div>
+
+  <!-- Restart card -->
+  <div style="text-align:center;margin-top:1.5rem;padding-bottom:0.5rem;">
+    <button class="nav-btn" id="restart-btn" style="margin:0 auto;">🔄 Start Over</button>
+  </div>
+</div>
+
+</div><!-- /shell -->
+
+<!-- Bottom navigation bar -->
+<div class="bottom-nav">
+  <button class="nav-btn ghost" id="btn-back" disabled>← Back</button>
+  <div class="step-counter">Step <strong id="step-num">1</strong> of <strong>8</strong></div>
+  <button class="nav-btn" id="btn-next">Next →</button>
+</div>
+
+<!-- ══════════════ JAVASCRIPT ══════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  /* ── State ── */
+  var TOTAL = 8;
+  var current = 0;
+
+  /* ── References ── */
+  var cards    = document.querySelectorAll('.step-card');
+  var btnBack  = document.getElementById('btn-back');
+  var btnNext  = document.getElementById('btn-next');
+  var stepNum  = document.getElementById('step-num');
+  var stepper  = document.getElementById('stepper');
+  var restartBtn = document.getElementById('restart-btn');
+
+  /* ── Build stepper dots ── */
+  for (var i = 0; i < TOTAL; i++) {
+    if (i > 0) {
+      var line = document.createElement('div');
+      line.className = 'step-line';
+      stepper.appendChild(line);
+    }
+    var dot = document.createElement('div');
+    dot.className = 'step-dot';
+    dot.textContent = i + 1;
+    dot.setAttribute('data-idx', i);
+    dot.addEventListener('click', (function (idx) {
+      return function () { goTo(idx); };
+    })(i));
+    stepper.appendChild(dot);
+  }
+
+  /* ── Refresh UI ── */
+  function refresh() {
+    /* Cards */
+    cards.forEach(function (c, idx) {
+      c.classList.toggle('visible', idx === current);
+    });
+
+    /* Dots */
+    var dots = stepper.querySelectorAll('.step-dot');
+    dots.forEach(function (d, idx) {
+      d.classList.remove('active', 'done');
+      if (idx < current)  d.classList.add('done');
+      if (idx === current) d.classList.add('active');
+    });
+
+    /* Scroll active dot into view */
+    var activeDot = dots[current];
+    if (activeDot) {
+      activeDot.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+
+    /* Nav buttons */
+    btnBack.disabled = (current === 0);
+    btnNext.style.display = (current === TOTAL - 1) ? 'none' : '';
+    stepNum.textContent = current + 1;
+
+    /* Scroll to top */
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ── Navigation ── */
+  function goTo(idx) {
+    if (idx >= 0 && idx < TOTAL) {
+      current = idx;
+      refresh();
+    }
+  }
+
+  btnNext.addEventListener('click', function () { goTo(current + 1); });
+  btnBack.addEventListener('click', function () { goTo(current - 1); });
+  if (restartBtn) {
+    restartBtn.addEventListener('click', function () { goTo(0); });
+  }
+
+  /* ── Swipe gestures (Android touch) ── */
+  var touchStartX = 0;
+  var touchStartY = 0;
+  document.addEventListener('touchstart', function (e) {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    var dx = e.changedTouches[0].screenX - touchStartX;
+    var dy = e.changedTouches[0].screenY - touchStartY;
+    /* Only trigger if horizontal swipe is dominant */
+    if (Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 50) {
+      if (dx < 0) goTo(current + 1); /* swipe left = next */
+      else        goTo(current - 1); /* swipe right = back */
+    }
+  }, { passive: true });
+
+  /* ── Tabs ── */
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var tabId = this.getAttribute('data-tab');
+      var strip = this.closest('.tab-strip');
+      var panels = this.closest('.tabs').querySelectorAll('.tab-panel');
+
+      strip.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+      panels.forEach(function (p) { p.classList.remove('active'); });
+
+      this.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    });
+  });
+
+  /* ── Specialty cards (toggle select) ── */
+  document.querySelectorAll('.spec-card').forEach(function (card) {
+    card.addEventListener('click', function () {
+      document.querySelectorAll('.spec-card').forEach(function (c) { c.classList.remove('sel'); });
+      this.classList.add('sel');
+    });
+  });
+
+  /* ── Checklist items ── */
+  document.querySelectorAll('.check-item').forEach(function (item) {
+    item.addEventListener('click', function () {
+      this.classList.toggle('ticked');
+    });
+  });
+
+  /* ── Copy buttons ── */
+  window.copyCode = function (btn) {
+    var block = btn.closest('.code-block');
+    /* Get text but skip the badge and button text */
+    var clone = block.cloneNode(true);
+    clone.querySelectorAll('.badge, .copy-btn').forEach(function (el) { el.remove(); });
+    var text = clone.textContent.trim();
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = '✓ Copied';
+        btn.classList.add('copied');
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 1800);
+      });
+    } else {
+      /* Fallback for older Android WebViews */
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      btn.textContent = '✓ Copied';
+      btn.classList.add('copied');
+      setTimeout(function () {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 1800);
+    }
+  };
+
+  /* ── Init ── */
+  refresh();
+})();
+</script>
+</body>
+</html>
